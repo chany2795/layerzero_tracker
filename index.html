@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LayerZero Tx Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        input[type="text"] {
+            width: 600px; 
+            padding: 10px; 
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .copy-button {
+            margin-left: 10px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .copy-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>LayerZero Tx Tracker</h1>
+    <input type="text" id="keyword" placeholder="지갑주소를 입력하세요" maxlength="42">
+    <button id="fetchButton">조회</button>
+    <table id="resultTable">
+        <thead>
+            <tr>
+                <th>Destination Chain</th>
+                <th>txHash</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- 결과 -->
+        </tbody>
+    </table>
+
+    <script>
+        document.getElementById('fetchButton').addEventListener('click', async () => {
+            const keyword = document.getElementById('keyword').value;
+            if (!keyword) {
+                alert('지갑주소를 입력하세요.');
+                return;
+            }
+
+            const url = `https://scan.layerzero-api.com/v1/messages/wallet/${keyword}`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('응답이 실패하였습니다.');
+                }
+                const data = await response.json();
+                console.log(data);
+
+                const tbody = document.querySelector('#resultTable tbody');
+                tbody.innerHTML = '';
+
+                const txHashes = data.data.map(item => item.destination.tx.txHash);
+                const destinationChains = data.data.map(item => item.pathway.receiver.chain);
+
+                for (let i = 0; i < txHashes.length; i++) {
+                    const row = document.createElement('tr');
+                    const destinationChainCell = document.createElement('td');
+                    const txHashCell = document.createElement('td');
+                    const copyButton = document.createElement('button');
+                    const txHashDiv = document.createElement('div');
+                    txHashDiv.textContent = txHashes[i];
+                    copyButton.textContent = '복사';
+                    copyButton.className = 'copy-button';
+                    copyButton.onclick = () => copyToClipboard(txHashes[i]);
+
+                    txHashDiv.appendChild(copyButton);
+                    txHashCell.appendChild(txHashDiv); 
+
+                    destinationChainCell.textContent = destinationChains[i];
+
+                    row.appendChild(destinationChainCell);
+                    row.appendChild(txHashCell); 
+                    tbody.appendChild(row);
+                }
+
+                adjustTableWidth();
+
+                if (txHashes.length === 0) {
+                    const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 2;
+                    cell.textContent = '결과를 찾을 수 없습니다.';
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
+                }
+            } catch (error) {
+                const tbody = document.querySelector('#resultTable tbody');
+                tbody.innerHTML = '';
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 2;
+                cell.textContent = '오류 발생: ' + error.message;
+                row.appendChild(cell);
+                tbody.appendChild(row);
+            }
+        });
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('복사되었습니다: ' + text);
+            }).catch(err => {
+                alert('복사 실패: ' + err);
+            });
+        }
+
+        function adjustTableWidth() {
+            const table = document.getElementById('resultTable');
+            const rows = table.rows;
+            const maxWidths = [];
+
+            for (let i = 0; i < rows[0].cells.length; i++) {
+                maxWidths[i] = 0;
+                for (let j = 0; j < rows.length; j++) {
+                    const cell = rows[j].cells[i];
+                    const cellWidth = cell.offsetWidth;
+                    maxWidths[i] = Math.max(maxWidths[i], cellWidth);
+                }
+            }
+
+            for (let i = 0; i < rows[0].cells.length; i++) {
+                const th = rows[0].cells[i];
+                th.style.width = maxWidths[i] + 'px';
+                for (let j = 1; j < rows.length; j++) {
+                    const td = rows[j].cells[i];
+                    td.style.width = maxWidths[i] + 'px';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
