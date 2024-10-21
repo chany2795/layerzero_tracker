@@ -12,11 +12,13 @@
         table {
             border-collapse: collapse;
             margin-top: 20px;
+            width: auto; 
         }
         th, td {
             border: 1px solid #ccc;
             padding: 10px;
             text-align: left;
+            white-space: nowrap; 
         }
         th {
             background-color: #f2f2f2;
@@ -27,17 +29,11 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        .copy-button {
-            margin-left: 10px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        .copy-button:hover {
-            background-color: #0056b3;
+        /* 추가된 스타일 */
+        .txHashDiv {
+            display: flex;
+            align-items: center;
+            gap: 10px; 
         }
     </style>
 </head>
@@ -50,6 +46,7 @@
             <tr>
                 <th>Destination Chain</th>
                 <th>txHash</th>
+                <th>Created (UTC)</th> 
             </tr>
         </thead>
         <tbody>
@@ -79,25 +76,31 @@
 
                 const txHashes = data.data.map(item => item.destination.tx.txHash);
                 const destinationChains = data.data.map(item => item.pathway.receiver.chain);
+                const createdDates = data.data.map(item => item.created); 
 
                 for (let i = 0; i < txHashes.length; i++) {
                     const row = document.createElement('tr');
                     const destinationChainCell = document.createElement('td');
                     const txHashCell = document.createElement('td');
-                    const copyButton = document.createElement('button');
+                    const createdCell = document.createElement('td');
                     const txHashDiv = document.createElement('div');
-                    txHashDiv.textContent = txHashes[i];
+                    txHashDiv.className = 'txHashDiv'; // 클래스 추가
+                    const copyButton = document.createElement('button');
+                    const txHashText = document.createElement('span');
+                    txHashText.textContent = txHashes[i];
                     copyButton.textContent = '복사';
-                    copyButton.className = 'copy-button';
                     copyButton.onclick = () => copyToClipboard(txHashes[i]);
 
+                    txHashDiv.appendChild(txHashText);
                     txHashDiv.appendChild(copyButton);
                     txHashCell.appendChild(txHashDiv); 
 
                     destinationChainCell.textContent = destinationChains[i];
+                    createdCell.textContent = new Date(createdDates[i]).toLocaleString(); 
 
                     row.appendChild(destinationChainCell);
                     row.appendChild(txHashCell); 
+                    row.appendChild(createdCell);
                     tbody.appendChild(row);
                 }
 
@@ -106,7 +109,7 @@
                 if (txHashes.length === 0) {
                     const row = document.createElement('tr');
                     const cell = document.createElement('td');
-                    cell.colSpan = 2;
+                    cell.colSpan = 3; 
                     cell.textContent = '결과를 찾을 수 없습니다.';
                     row.appendChild(cell);
                     tbody.appendChild(row);
@@ -116,7 +119,7 @@
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 2;
+                cell.colSpan = 3; 
                 cell.textContent = '오류 발생: ' + error.message;
                 row.appendChild(cell);
                 tbody.appendChild(row);
@@ -134,23 +137,17 @@
         function adjustTableWidth() {
             const table = document.getElementById('resultTable');
             const rows = table.rows;
-            const maxWidths = [];
 
             for (let i = 0; i < rows[0].cells.length; i++) {
-                maxWidths[i] = 0;
+                let maxWidth = 0;
                 for (let j = 0; j < rows.length; j++) {
                     const cell = rows[j].cells[i];
-                    const cellWidth = cell.offsetWidth;
-                    maxWidths[i] = Math.max(maxWidths[i], cellWidth);
+                    const cellWidth = cell.scrollWidth; 
+                    maxWidth = Math.max(maxWidth, cellWidth);
                 }
-            }
-
-            for (let i = 0; i < rows[0].cells.length; i++) {
-                const th = rows[0].cells[i];
-                th.style.width = maxWidths[i] + 'px';
-                for (let j = 1; j < rows.length; j++) {
-                    const td = rows[j].cells[i];
-                    td.style.width = maxWidths[i] + 'px';
+                for (let j = 0; j < rows.length; j++) {
+                    const cell = rows[j].cells[i];
+                    cell.style.width = maxWidth + 'px'; 
                 }
             }
         }
