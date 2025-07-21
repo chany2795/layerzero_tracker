@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LayerZero Tx Tracker</title>
     <style>
         body {
@@ -12,40 +12,71 @@
         table {
             border-collapse: collapse;
             margin-top: 20px;
-            width: auto; 
+            width: auto;
         }
         th, td {
             border: 1px solid #ccc;
             padding: 10px;
             text-align: left;
-            white-space: nowrap; 
+            white-space: nowrap;
         }
         th {
             background-color: #f2f2f2;
         }
+        /* 검색창과 버튼을 감싸는 컨테이너 추가 */
+        .searchContainer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-width: 100%;
+        }
         input[type="text"] {
-            width: 600px; 
-            padding: 10px; 
+            width: 600px;
+            max-width: 100%;
+            padding: 10px;
             font-size: 16px;
             box-sizing: border-box;
+            flex-grow: 1;
+            min-width: 0; /* flex 아이템 최소 너비 제한 */
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
         .txHashDiv {
             display: flex;
             align-items: center;
-            gap: 10px; 
+            gap: 10px;
+        }
+        /* 모바일 대응 */
+        @media (max-width: 600px) {
+            input[type="text"] {
+                width: 100%;
+            }
+            button {
+                width: 100%;
+            }
+            .searchContainer {
+                flex-direction: column;
+                align-items: stretch;
+            }
         }
     </style>
 </head>
 <body>
     <h1>LayerZero Tx Tracker</h1>
-    <input type="text" id="keyword" placeholder="지갑주소를 입력하세요" maxlength="42">
-    <button id="fetchButton">조회</button>
+    <div class="searchContainer">
+        <input type="text" id="keyword" placeholder="지갑주소를 입력하세요" maxlength="42" />
+        <button id="fetchButton">조회</button>
+    </div>
     <table id="resultTable">
         <thead>
             <tr>
                 <th>Destination Chain</th>
                 <th>txHash</th>
-                <th>Created (UTC)</th> 
+                <th>Created (UTC)</th>
             </tr>
         </thead>
         <tbody>
@@ -55,7 +86,7 @@
 
     <script>
         document.getElementById('fetchButton').addEventListener('click', async () => {
-            const keyword = document.getElementById('keyword').value;
+            const keyword = document.getElementById('keyword').value.trim();
             if (!keyword) {
                 alert('지갑주소를 입력하세요.');
                 return;
@@ -73,52 +104,54 @@
                 const tbody = document.querySelector('#resultTable tbody');
                 tbody.innerHTML = '';
 
-                const txHashes = data.data.map(item => item.destination.tx.txHash);
-                const destinationChains = data.data.map(item => item.pathway.receiver.chain);
-                const createdDates = data.data.map(item => item.created); 
-
-                for (let i = 0; i < txHashes.length; i++) {
+                if (!data.data || data.data.length === 0) {
                     const row = document.createElement('tr');
+                    const cell = document.createElement('td');
+                    cell.colSpan = 3;
+                    cell.textContent = '결과를 찾을 수 없습니다.';
+                    row.appendChild(cell);
+                    tbody.appendChild(row);
+                    return;
+                }
+
+                for (const item of data.data) {
+                    const row = document.createElement('tr');
+
                     const destinationChainCell = document.createElement('td');
+                    destinationChainCell.textContent = item.pathway?.receiver?.chain || '';
+
                     const txHashCell = document.createElement('td');
-                    const createdCell = document.createElement('td');
                     const txHashDiv = document.createElement('div');
-                    txHashDiv.className = 'txHashDiv'; // 클래스 추가
-                    const copyButton = document.createElement('button');
+                    txHashDiv.className = 'txHashDiv';
+
                     const txHashText = document.createElement('span');
-                    txHashText.textContent = txHashes[i];
+                    txHashText.textContent = item.destination?.tx?.txHash || '';
+
+                    const copyButton = document.createElement('button');
                     copyButton.textContent = '복사';
-                    copyButton.onclick = () => copyToClipboard(txHashes[i]);
+                    copyButton.onclick = () => copyToClipboard(item.destination?.tx?.txHash || '');
 
                     txHashDiv.appendChild(txHashText);
                     txHashDiv.appendChild(copyButton);
-                    txHashCell.appendChild(txHashDiv); 
+                    txHashCell.appendChild(txHashDiv);
 
-                    destinationChainCell.textContent = destinationChains[i];
-                    createdCell.textContent = new Date(createdDates[i]).toLocaleString(); 
+                    const createdCell = document.createElement('td');
+                    createdCell.textContent = item.created ? new Date(item.created).toLocaleString() : '';
 
                     row.appendChild(destinationChainCell);
-                    row.appendChild(txHashCell); 
+                    row.appendChild(txHashCell);
                     row.appendChild(createdCell);
                     tbody.appendChild(row);
                 }
 
                 adjustTableWidth();
 
-                if (txHashes.length === 0) {
-                    const row = document.createElement('tr');
-                    const cell = document.createElement('td');
-                    cell.colSpan = 3; 
-                    cell.textContent = '결과를 찾을 수 없습니다.';
-                    row.appendChild(cell);
-                    tbody.appendChild(row);
-                }
             } catch (error) {
                 const tbody = document.querySelector('#resultTable tbody');
                 tbody.innerHTML = '';
                 const row = document.createElement('tr');
                 const cell = document.createElement('td');
-                cell.colSpan = 3; 
+                cell.colSpan = 3;
                 cell.textContent = '오류 발생: ' + error.message;
                 row.appendChild(cell);
                 tbody.appendChild(row);
@@ -126,6 +159,7 @@
         });
 
         function copyToClipboard(text) {
+            if (!text) return;
             navigator.clipboard.writeText(text).then(() => {
                 alert('복사되었습니다: ' + text);
             }).catch(err => {
@@ -141,12 +175,14 @@
                 let maxWidth = 0;
                 for (let j = 0; j < rows.length; j++) {
                     const cell = rows[j].cells[i];
-                    const cellWidth = cell.scrollWidth; 
+                    if (!cell) continue;
+                    const cellWidth = cell.scrollWidth;
                     maxWidth = Math.max(maxWidth, cellWidth);
                 }
                 for (let j = 0; j < rows.length; j++) {
                     const cell = rows[j].cells[i];
-                    cell.style.width = maxWidth + 'px'; 
+                    if (!cell) continue;
+                    cell.style.width = maxWidth + 'px';
                 }
             }
         }
